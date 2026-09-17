@@ -4,26 +4,22 @@
 
 ### Continued development of MSBT floating combat text for World of Warcraft Classic
 
-<img src="https://img.shields.io/github/v/release/NeeRgY/MikScrollingBattleText?style=for-the-badge" />
-<img src="https://img.shields.io/github/last-commit/NeeRgY/MikScrollingBattleText?style=for-the-badge" />
-<img src="https://img.shields.io/github/issues/NeeRgY/MikScrollingBattleText?style=for-the-badge" />
+<img src="https://img.shields.io/github/v/release/NeeRgY/MSBT?style=for-the-badge" />
+<img src="https://img.shields.io/github/last-commit/NeeRgY/MSBT?style=for-the-badge" />
+<img src="https://img.shields.io/github/issues/NeeRgY/MSBT?style=for-the-badge" />
 <br><br>
 
-[![Curseforge](https://img.shields.io/curseforge/dt/PLACEHOLDER?label=CurseForge&color=F16436&style=for-the-badge)](https://www.curseforge.com/wow/addons/PLACEHOLDER)
+[![Curseforge](https://img.shields.io/curseforge/dt/1698949?label=CurseForge&color=F16436&style=for-the-badge)](https://www.curseforge.com/wow/addons/mikscrollingbattletext-classic)
 [![Wago](https://img.shields.io/badge/Wago-MSBT-C1272D?style=for-the-badge&logo=wago&logoColor=white)](https://addons.wago.io/addons/PLACEHOLDER)
-[![Discord](https://img.shields.io/discord/PLACEHOLDER?style=for-the-badge&label=Discord&color=5865F2)](https://discord.gg/PLACEHOLDER)
+[![Discord](https://img.shields.io/discord/1538823169446645762?style=for-the-badge&label=Discord&color=5865F2)](https://discord.gg/YjfyDKckCS)
 <br>
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/neergy)
-
-**This is a community fork. Donations / tips support my maintenance, not the original MSBT author.**
 
 ---
 <br>
 
-A maintained fork of **Mik's Scrolling Battle Text (MSBT)**, originally by **Mikord**.
+A maintained Version of **Mik's Scrolling Battle Text (MSBT)**, originally by **Mikord**.
 
-Rebuilds the options window on a flat KeyHerald-style theme, with a dedicated TOC and code tree per game version.
+Rebuilds the options window on a flat theme, with a dedicated TOC and code tree per game version.
 
 **Current version:** `v1.0.0`
 
