@@ -120,7 +120,7 @@ Bug reports and fixes welcome. When reporting an issue, include:
 ## Original Author
 - Mikord
 
-## Current Fork Maintainer
+## Current Maintainer
 - NeRgY
 
 ---
