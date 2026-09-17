@@ -125,11 +125,6 @@ Bug reports and fixes welcome. When reporting an issue, include:
 
 ---
 
-# License
-
-The original MSBT does not ship an explicit open-source license file, so its licensing terms are unclear. This version is maintained and distributed with attribution to the original author under that same uncertainty - if you are the original author and want a specific license applied, please open an issue.
-
----
 
 # Disclaimer
 
