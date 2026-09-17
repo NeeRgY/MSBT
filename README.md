@@ -37,14 +37,14 @@ This repository is maintained by **NeRgY**.
 
 Lineage:
 
-1. [Mikord/MikScrollingBattleText](https://www.curseforge.com/wow/addons/mikscrollingbattletext) — original MSBT
+1. [Mikord/MikScrollingBattleText](https://www.curseforge.com/wow/addons/mik-scrolling-battle-text) — original MSBT
 2. **NeRgY** — rebuilt the options UI and continues maintenance for Classic
 
 Goals of this fork:
 
 - One addon covering **Classic Era, TBC Classic, MoP Classic and Classic ("Forever")**
 - One TOC and one code tree per version so nothing cross-contaminates
-- A modern, flat KeyHerald-style options window instead of the old parchment UI
+- A modern, flat options window instead of the old parchment UI
 - Stay practical: stable, testable changes
 
 > This is **NOT** the official MSBT repository.
@@ -74,7 +74,7 @@ Without their work, this fork would not exist.
 
 ## NeRgY Fork Highlights
 
-- Options window rebuilt on a flat, KeyHerald-style theme (panel, nav rail, accent color) instead of the old parchment/paperdoll UI
+- Options window rebuilt on a flat theme (panel, nav rail, accent color) instead of the old parchment/paperdoll UI
 - New **Settings** tab: custom HSV color picker, UI language override, minimap button toggle, window scale and transparency sliders
 - Minimap button to open the options window, with its own icon in the Blizzard AddOns list
 - Profile export/import as a plain string, with a font preview button
