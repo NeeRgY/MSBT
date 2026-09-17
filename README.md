@@ -27,7 +27,7 @@ Rebuilds the options window on a flat theme, with a dedicated TOC and code tree 
 
 ---
 
-# About This Fork
+# About This Version
 
 This repository is maintained by **NeRgY**.
 
@@ -36,7 +36,7 @@ Lineage:
 1. [Mikord/MikScrollingBattleText](https://www.curseforge.com/wow/addons/mik-scrolling-battle-text) — original MSBT
 2. **NeRgY** — rebuilt the options UI and continues maintenance for Classic
 
-Goals of this fork:
+Goals of this Version:
 
 - One addon covering **Classic Era, TBC Classic, MoP Classic and Classic ("Forever")**
 - One TOC and one code tree per version so nothing cross-contaminates
@@ -51,7 +51,7 @@ Goals of this fork:
 
 - Original MSBT: Mikord
 
-Without their work, this fork would not exist.
+Without their work, this Version would not exist.
 
 ---
 
@@ -68,7 +68,7 @@ Without their work, this fork would not exist.
 
 ---
 
-## NeRgY Fork Highlights
+## NeRgY Highlights
 
 - Options window rebuilt on a flat theme (panel, nav rail, accent color) instead of the old parchment/paperdoll UI
 - New **Settings** tab: custom HSV color picker, UI language override, minimap button toggle, window scale and transparency sliders
