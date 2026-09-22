@@ -1,37 +1,37 @@
 <div align="center">
 
-# Mik's Scrolling Battle Text - NeRgY Fork
+# Mik's Scrolling Battle Text
 
 ### Continued development of MSBT floating combat text for World of Warcraft Classic
 
-<img src="https://img.shields.io/github/v/release/NeeRgY/MikScrollingBattleText?style=for-the-badge" />
-<img src="https://img.shields.io/github/last-commit/NeeRgY/MikScrollingBattleText?style=for-the-badge" />
-<img src="https://img.shields.io/github/issues/NeeRgY/MikScrollingBattleText?style=for-the-badge" />
+<img src="https://img.shields.io/github/v/release/NeeRgY/MSBT?style=for-the-badge" />
+<img src="https://img.shields.io/github/last-commit/NeeRgY/MSBT?style=for-the-badge" />
+<img src="https://img.shields.io/github/issues/NeeRgY/MSBT?style=for-the-badge" />
 <br><br>
 
-[![Curseforge](https://img.shields.io/curseforge/dt/PLACEHOLDER?label=CurseForge&color=F16436&style=for-the-badge)](https://www.curseforge.com/wow/addons/PLACEHOLDER)
+[![Curseforge](https://img.shields.io/curseforge/dt/1698949?label=CurseForge&color=F16436&style=for-the-badge)](https://www.curseforge.com/wow/addons/mikscrollingbattletext-classic)
 [![Wago](https://img.shields.io/badge/Wago-MSBT-C1272D?style=for-the-badge&logo=wago&logoColor=white)](https://addons.wago.io/addons/PLACEHOLDER)
-[![Discord](https://img.shields.io/discord/PLACEHOLDER?style=for-the-badge&label=Discord&color=5865F2)](https://discord.gg/PLACEHOLDER)
+[![Discord](https://img.shields.io/discord/1538823169446645762?style=for-the-badge&label=Discord&color=5865F2)](https://discord.gg/YjfyDKckCS)
 <br>
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/neergy)
 
-**This is a community fork. Donations / tips support my maintenance, not the original MSBT author.**
+**This is a community Version. Donations / tips support my maintenance, not the original MSBT author.**
 
 ---
 <br>
 
-A maintained fork of **Mik's Scrolling Battle Text (MSBT)**, originally by **Mikord**.
+A maintained Version of **Mik's Scrolling Battle Text (MSBT)**, originally by **Mikord**.
 
-Rebuilds the options window on a flat KeyHerald-style theme, with a dedicated TOC and code tree per game version.
+Rebuilds the options window on a flat theme, with a dedicated TOC and code tree per game version.
 
-**Current version:** `v1.0.0`
+**Current version:** `v1.0.1`
 
 </div>
 
 ---
 
-# About This Fork
+# About This Version
 
 This repository is maintained by **NeRgY**.
 
@@ -40,11 +40,11 @@ Lineage:
 1. [Mikord/MikScrollingBattleText](https://www.curseforge.com/wow/addons/mikscrollingbattletext) — original MSBT
 2. **NeRgY** — rebuilt the options UI and continues maintenance for Classic
 
-Goals of this fork:
+Goals of this Version:
 
 - One addon covering **Classic Era, TBC Classic, MoP Classic and Classic ("Forever")**
 - One TOC and one code tree per version so nothing cross-contaminates
-- A modern, flat KeyHerald-style options window instead of the old parchment UI
+- A modern, flat options window instead of the old parchment UI
 - Stay practical: stable, testable changes
 
 > This is **NOT** the official MSBT repository.
@@ -55,7 +55,7 @@ Goals of this fork:
 
 - Original MSBT: Mikord
 
-Without their work, this fork would not exist.
+Without their work, this Version would not exist.
 
 ---
 
@@ -74,9 +74,9 @@ Without their work, this fork would not exist.
 
 ---
 
-## NeRgY Fork Highlights
+## NeRgY Highlights
 
-- Options window rebuilt on a flat, KeyHerald-style theme (panel, nav rail, accent color) instead of the old parchment/paperdoll UI
+- Options window rebuilt on a flat, modern theme (panel, nav rail, accent color) instead of the old parchment/paperdoll UI
 - New **Settings** tab: custom HSV color picker, UI language override, minimap button toggle, window scale and transparency sliders
 - Minimap button to open the options window, with its own icon in the Blizzard AddOns list
 - Profile export/import as a plain string, with a font preview button
@@ -116,8 +116,8 @@ Bug reports and fixes welcome. When reporting an issue, include:
 
 # Support
 
-- GitHub Issues: https://github.com/NeeRgY/MikScrollingBattleText/issues
-- Repository: https://github.com/NeeRgY/MikScrollingBattleText
+- GitHub Issues: https://github.com/NeeRgY/MSBT/issues
+- Repository: https://github.com/NeeRgY/MSBT
 
 ---
 
@@ -126,16 +126,11 @@ Bug reports and fixes welcome. When reporting an issue, include:
 ## Original Author
 - Mikord
 
-## Current Fork Maintainer
+## Current Maintainer
 - NeRgY
 
 ---
 
-# License
-
-The original MSBT does not ship an explicit open-source license file, so its licensing terms are unclear. This fork is maintained and distributed with attribution to the original author under that same uncertainty - if you are the original author and want a specific license applied, please open an issue.
-
----
 
 # Disclaimer
 
@@ -144,3 +139,4 @@ This project is unofficial and is not affiliated with Blizzard Entertainment.
 World of Warcraft is a trademark of Blizzard Entertainment.
 
 Use this addon at your own discretion.
+# Disclaimer
