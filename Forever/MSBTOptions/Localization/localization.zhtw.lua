@@ -9,12 +9,8 @@
 -- Local reference for faster access.
 local L = MikSBT.translations
 
--- Wrapped in a function and registered in MikSBT.localePacks: applied
--- immediately below only if the client itself already runs zhTW (no
--- SavedVariables dependency), and re-applied from CreateMainFrame() in
--- MSBTOptionsMain.lua to resolve the Settings tab's language override,
--- since MSBTProfiles_SavedVars isn't readable until ADDON_LOADED - well
--- after this file already ran.
+-- Registered in MikSBT.localePacks for re-application once the language
+-- override is readable (see CreateMainFrame() in MSBTOptionsMain.lua).
 local function Apply()
 
 -------------------------------------------------------------------------------

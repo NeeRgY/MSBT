@@ -951,13 +951,28 @@ end
 
 
 -- ****************************************************************************
+-- Called if combat log access turns out to be blocked this session (see
+-- MikSBT.RegisterCombatLogEvent in MikSBT.lua). Combat-log-driven damage/
+-- heal number parsing simply stays off; every other event this module
+-- handles (unit/class map, chat search events, etc.) is unaffected.
+-- ****************************************************************************
+local combatLogBlockedNoticeShown = false
+local function OnCombatLogBlocked()
+	if not combatLogBlockedNoticeShown then
+		combatLogBlockedNoticeShown = true
+		Print("Combat log access is blocked this session, so damage/heal numbers parsed from it won't be shown. Other notifications are unaffected.")
+	end
+end
+
+
+-- ****************************************************************************
 -- Enables parsing.
 -- ****************************************************************************
 local function Enable()
 	isParserEnabled = true
 
 	-- Register for parameter style events going to the combat log.
-	MikSBT.RegisterCombatLogEvent(eventFrame)
+	MikSBT.RegisterCombatLogEvent(eventFrame, OnCombatLogBlocked)
 
 	-- Register CHAT_MSG_X search style events.
 	for event in pairs(searchMap) do
@@ -991,9 +1006,12 @@ local function Disable()
 	-- Stop receiving updates.
 	eventFrame:Hide()
 
-	-- Unregister everything except COMBAT_LOG_EVENT_UNFILTERED - left
-	-- registered but harmless while disabled, since OnEvent only runs while
-	-- the frame is shown.
+	-- Unregister everything except COMBAT_LOG_EVENT_UNFILTERED: Retail
+	-- refuses UnregisterEvent for that specific event too once it's been
+	-- granted via the taint-safe gate (see MikSBT.RegisterCombatLogEvent in
+	-- MikSBT.lua), so UnregisterAllEvents() would itself throw. The event
+	-- stays registered but harmless while disabled, since OnEvent only runs
+	-- while the frame is shown.
 	for event in pairs(searchMap) do
 		eventFrame:UnregisterEvent(event)
 	end

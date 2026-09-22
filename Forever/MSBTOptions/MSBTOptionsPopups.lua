@@ -32,9 +32,9 @@ local ConvertType = MSBTTriggers.ConvertType
 local fonts = MSBTMedia.fonts
 local sounds = MSBTMedia.sounds
 
-local IsClassic = WOW_PROJECT_ID >= WOW_PROJECT_CLASSIC
+local IsClassic = MikSBT.Client.isClassicContent
 local IsCataClassic = WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC
-local IsVanillaClassic = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
+local IsVanillaClassic = MikSBT.Client.isVanillaContent
 
 
 
@@ -4387,10 +4387,12 @@ end
 -- Initialization.
 -------------------------------------------------------------------------------
 
-if IsClassic then
+if FillLocalizedClassList then
 	FillLocalizedClassList(CLASS_NAMES)
-else
+elseif LocalizedClassList then
 	CLASS_NAMES = LocalizedClassList()
+else
+	for classFile, className in pairs(LOCALIZED_CLASS_NAMES_MALE) do CLASS_NAMES[classFile] = className end
 end
 
 

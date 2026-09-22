@@ -5,11 +5,8 @@
 
 MSBTOptions = {}
 
--- Wrapped in a function and registered in MikSBT.localePacks: applied
--- immediately below (the unconditional English baseline), and re-applied
--- from CreateMainFrame() in MSBTOptionsMain.lua before resolving the
--- Settings tab's language override, since MSBTProfiles_SavedVars isn't
--- readable until ADDON_LOADED - well after this file already ran once.
+-- Registered in MikSBT.localePacks for re-application once the language
+-- override is readable (see CreateMainFrame() in MSBTOptionsMain.lua).
 local function Apply()
 
 -- Local reference for faster access.

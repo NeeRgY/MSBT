@@ -7,6 +7,16 @@ local mod = {}
 local modName = "MikSBT"
 _G[modName] = mod
 
+-- WOW_PROJECT_ID reports MAINLINE on the "Forever" client despite it being
+-- Classic content, so Classic-vs-Retail decisions key off the interface
+-- number instead.
+local isForever = tonumber((select(4, GetBuildInfo()))) == 16001
+mod.Client = {
+	isForever = isForever,
+	isClassicContent = isForever or WOW_PROJECT_ID >= WOW_PROJECT_CLASSIC,
+	isVanillaContent = isForever or WOW_PROJECT_ID == WOW_PROJECT_CLASSIC,
+}
+
 
 -------------------------------------------------------------------------------
 -- Imports.
@@ -19,25 +29,56 @@ local string_gsub = string.gsub
 local string_match = string.match
 local math_floor = math.floor
 
-local function _GetSpellInfo(...)
-	local info = C_Spell.GetSpellInfo(...)
-	if not info then
-		return nil
+-- This client reports WOW_PROJECT_MAINLINE, so C_Spell calls in combat can
+-- return patch 12.0 "Secret Values" - reading one directly throws instead
+-- of returning a wrong result. issecretvalue()/canaccessvalue() predict
+-- that safely (ported from the "Midnight" MSBT fork's API/RestrictedValue.lua).
+local function IsAccessible(value)
+	if (type(issecretvalue) == "function") then
+		local ok, isSecret = pcall(issecretvalue, value)
+		return ok and not isSecret
 	end
-	return info.name, nil, info.iconID, info.castTime, info.minRange, info.maxRange, info.spellID, info.originalIconID
+	if (type(canaccessvalue) == "function") then
+		local ok, canAccess = pcall(canaccessvalue, value)
+		return ok and canAccess == true
+	end
+	return true
+end
+
+local function SafeNumber(value)
+	if (IsAccessible(value) and type(value) == "number") then return value end
+end
+
+local function SafeString(value)
+	if (IsAccessible(value) and type(value) == "string") then return value end
+end
+
+local function _GetSpellInfo(...)
+	local ok, info = pcall(C_Spell.GetSpellInfo, ...)
+	if (not ok or not info or not IsAccessible(info)) then return nil end
+	local name = SafeString(info.name)
+	if (not name) then return nil end
+	return name, nil, SafeNumber(info.iconID), SafeNumber(info.castTime),
+		SafeNumber(info.minRange), SafeNumber(info.maxRange), SafeNumber(info.spellID), SafeNumber(info.originalIconID)
 end
 
 local function _GetSpellCooldown(...)
-	local info = C_Spell.GetSpellCooldown(...)
-	if info then
-		return info.startTime, info.duration, info.isEnabled, info.modRate
-	end
+	local ok, info = pcall(C_Spell.GetSpellCooldown, ...)
+	if (not ok or not info or not IsAccessible(info)) then return nil end
+	local startTime, duration = SafeNumber(info.startTime), SafeNumber(info.duration)
+	if (not startTime or not duration) then return nil end
+	return startTime, duration, info.isEnabled, SafeNumber(info.modRate)
+end
+
+local function _GetSpellTexture(...)
+	local ok, texture = pcall(C_Spell.GetSpellTexture, ...)
+	if (not ok) then return nil end
+	return SafeNumber(texture)
 end
 
 local GetSpellCooldown = (C_Spell and C_Spell.GetSpellCooldown) and _GetSpellCooldown or GetSpellCooldown
 local GetSpellInfo = (C_Spell and C_Spell.GetSpellInfo) and _GetSpellInfo or GetSpellInfo
-
-local GetSpellTexture = (C_Spell and C_Spell.GetSpellTexture) and C_Spell.GetSpellTexture or GetSpellTexture
+local GetSpellTexture = (C_Spell and C_Spell.GetSpellTexture) and _GetSpellTexture or GetSpellTexture
 
 
 -------------------------------------------------------------------------------
@@ -194,12 +235,77 @@ end
 end--]]
 
 
+-------------------------------------------------------------------------------
+-- Combat log registration gate (Retail taint safety).
+-------------------------------------------------------------------------------
+-- Frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED") is refused when called
+-- from a *tainted* execution path - but that's a Retail-only restriction
+-- (patch 12.0's Secret Values/taint rules), which Retail isn't even
+-- supported on anymore (see README). Classic clients have never restricted
+-- this, and issecure() isn't a reliable signal there either - other addons
+-- commonly taint the global execution state for reasons that have nothing
+-- to do with combat log access, which was producing false "blocked"
+-- positives on Classic. So none of this gating runs there at all: the event
+-- registers immediately and combatLogBlocked stays false for the session.
+-- (Gate mechanics ported from Parrot3's Code/Parrot.lua.)
+local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+
+local combatLogGateReady = not IsRetail
+local combatLogCallbacks = {}
+
+local function ResolveCombatLogGate()
+	if combatLogGateReady then return end
+	combatLogGateReady = true
+
+	-- issecure() reflects whether THIS call stack is currently tainted; since
+	-- we're inside the clean PLAYER_LOGIN/PLAYER_ENTERING_WORLD dispatch, a
+	-- true here means every callback below can safely register the event
+	-- from this same synchronous stack.
+	mod.combatLogBlocked = not issecure()
+
+	for _, callback in ipairs(combatLogCallbacks) do
+		callback()
+	end
+	combatLogCallbacks = nil
+end
+
+if IsRetail then
+	local combatLogGateFrame = CreateFrame("Frame")
+	combatLogGateFrame:SetScript("OnEvent", function(_, event)
+		combatLogGateFrame:UnregisterEvent(event)
+		ResolveCombatLogGate()
+	end)
+	combatLogGateFrame:RegisterEvent("PLAYER_LOGIN")
+	combatLogGateFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+end
+
 -- ****************************************************************************
--- Registers frame for COMBAT_LOG_EVENT_UNFILTERED. Classic never restricts
--- registering this event, so it just registers directly.
+-- Registers frame for COMBAT_LOG_EVENT_UNFILTERED as soon as it's safe to do
+-- so (immediately if the gate already resolved and access is available), and
+-- calls onBlocked() instead if combat log access turns out to be blocked
+-- this session. Safe to call from multiple modules; each gets its own
+-- independent registration attempt.
 -- ****************************************************************************
-local function RegisterCombatLogEvent(frame)
-	frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+local function RegisterCombatLogEvent(frame, onBlocked)
+	local function attempt()
+		if mod.combatLogBlocked then
+			if (onBlocked) then onBlocked() end
+		else
+			frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+			-- Belt-and-suspenders: fall back to the blocked path if the
+			-- registration didn't actually take despite issecure() saying
+			-- it should have.
+			if not frame:IsEventRegistered("COMBAT_LOG_EVENT_UNFILTERED") then
+				if (onBlocked) then onBlocked() end
+			end
+		end
+	end
+
+	if combatLogGateReady then
+		attempt()
+	else
+		combatLogCallbacks[#combatLogCallbacks + 1] = attempt
+	end
 end
 
 
@@ -397,6 +503,7 @@ end
 
 -- Protected Variables.
 mod.translations = translations
+mod.combatLogBlocked = false
 
 -- Protected Functions.
 mod.CopyTable			= CopyTable

@@ -7,7 +7,7 @@ local module = {}
 local moduleName = "Main"
 MSBTOptions[moduleName] = module
 
-local IsClassic = WOW_PROJECT_ID >= WOW_PROJECT_CLASSIC
+local IsClassic = MikSBT.Client.isClassicContent
 
 
 -------------------------------------------------------------------------------
@@ -50,20 +50,16 @@ local mainFrame
 local popupFrames = {}
 
 -- Tab info: { tabKey, frame, button, searchText }, 1:1 with ../KeyHerald's
--- GUI.tabs. Populated at file-load time by AddTab() calls from Tabs.lua
--- (before the window exists); InitTab() resolves the tab's label/tooltip/
--- search text from L fresh (not from a snapshot taken at AddTab time) once
--- CreateMainFrame() runs, since that's the earliest point the Settings
--- tab's language override can be known (see CreateMainFrame below).
+-- GUI.tabs. Populated at file-load time by AddTab(); InitTab() resolves
+-- label/tooltip/search text from L fresh once CreateMainFrame() runs,
+-- since that's the earliest point the language override is known.
 local tabData = {}
 local rail
 local indicator
 local activeIndex
 local searchInput
 
--- Set by Tabs.lua once BuildTabSearchText() is defined there, since the
--- per-tab search keyword data (TAB_SEARCH_KEYS) belongs to Tabs.lua, not
--- here.
+-- Set by Tabs.lua, which owns the per-tab search keyword data.
 local searchTextBuilder
 
 -- Resource read-out (bottom-right corner).
@@ -86,11 +82,9 @@ local SelectTab
 -- (../KeyHerald's GUI:AddTab).
 -- ****************************************************************************
 local function InitTab(tabInfo, index)
-	-- Resolved fresh from L here rather than at AddTab() time: each
-	-- localization file replaces L.TABS[key] with a brand new table (see
-	-- Localization/localization.*.lua), so a reference captured earlier
-	-- would go stale the moment CreateMainFrame() re-resolves the language
-	-- below.
+	-- Resolved fresh from L here, not at AddTab() time: each localization
+	-- file replaces L.TABS[key] with a brand new table, so a reference
+	-- captured earlier would go stale once the language is re-resolved.
 	local objLocale = L.TABS[tabInfo.tabKey]
 	tabInfo.searchText = searchTextBuilder and searchTextBuilder(tabInfo.tabKey)
 
@@ -332,16 +326,11 @@ end
 -- Creates the main options frame.
 -- ****************************************************************************
 local function CreateMainFrame()
-	-- Resolve the Settings tab's language override here, the first point
-	-- this frame's creation is ever reachable from (a slash command/
-	-- minimap click, always after login): MSBTProfiles_SavedVars isn't
-	-- populated until ADDON_LOADED, which fires only after every one of
-	-- this addon's files - including every localization.*.lua - has
-	-- already run once, so the override can never be read from inside
-	-- those files themselves. Reset to the English pack first, since a
-	-- non-English pack only overwrites the keys it translates and would
-	-- otherwise leave stale text from whatever GetLocale() auto-applied at
-	-- file-load time.
+	-- Resolve the Settings tab's language override here: this is the
+	-- earliest point MSBTProfiles_SavedVars is readable, since it's still
+	-- nil during every file's own load-time execution (including every
+	-- localization.*.lua). Reset to English first, since a non-English
+	-- pack only overwrites the keys it translates.
 	if (MikSBT.localePacks) then
 		if (MikSBT.localePacks["enUS"]) then MikSBT.localePacks["enUS"]() end
 		local override = MSBTProfiles_SavedVars and MSBTProfiles_SavedVars.uiLanguage

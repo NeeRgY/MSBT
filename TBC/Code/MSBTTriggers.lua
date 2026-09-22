@@ -537,7 +537,9 @@ end
 
 
 -- ****************************************************************************
--- Registers all events in listenEvents.
+-- Registers all events in listenEvents. COMBAT_LOG_EVENT_UNFILTERED needs
+-- the taint-safe gate (see MikSBT.RegisterCombatLogEvent in MikSBT.lua);
+-- every other listen event is safe to register directly and immediately.
 -- ****************************************************************************
 local function RegisterListenEvents()
 	for event in pairs(listenEvents) do
@@ -555,9 +557,11 @@ end
 -- ****************************************************************************
 local function UpdateTriggers()
 	-- Unregister all of the events from the event frame, except
-	-- COMBAT_LOG_EVENT_UNFILTERED, which is left registered for the rest of
-	-- the session. HandleCombatLogTriggers() already no-ops once
-	-- categorizedTriggers no longer has an entry for the event, so this
+	-- COMBAT_LOG_EVENT_UNFILTERED: Retail refuses UnregisterEvent for that
+	-- specific event too once it's been granted via the taint-safe gate (see
+	-- MikSBT.RegisterCombatLogEvent in MikSBT.lua), so it's left registered
+	-- for the rest of the session. HandleCombatLogTriggers() already no-ops
+	-- once categorizedTriggers no longer has an entry for the event, so this
 	-- doesn't leak any behavior - just an event delivery that gets ignored.
 	for event in pairs(listenEvents) do
 		if event ~= "COMBAT_LOG_EVENT_UNFILTERED" then

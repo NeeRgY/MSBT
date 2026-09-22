@@ -30,15 +30,13 @@ L.FONT_FILES = {
 L.DEFAULT_FONT_NAME = "MSBT Porky"
 
 
--- Everything below is wrapped in a function and registered in
--- MikSBT.localePacksCore: applied immediately below (the unconditional
--- English baseline), and re-applied from MSBTProfiles.lua's ADDON_LOADED
--- handler (after InitSavedVariables()) to resolve the Settings tab's
--- language override, since MSBTProfiles_SavedVars isn't readable until
--- then. Font selection above stays tied to the client's own GetLocale()
--- only, never the override - a client only has glyph data for its own
--- locale, so an overridden language's font would just render as tofu
--- boxes regardless of what the option says.
+-- Everything below is registered in MikSBT.localePacksCore for
+-- re-application once the language override is readable (see
+-- MSBTProfiles.lua's ADDON_LOADED handler). Font selection above stays
+-- tied to the client's own GetLocale() only, never the override - a
+-- client only has glyph data for its own locale, so an overridden
+-- language's font would just render as tofu boxes regardless of the
+-- option.
 local function Apply()
 
 ------------------------------

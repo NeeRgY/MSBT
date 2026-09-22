@@ -410,9 +410,11 @@ local function UpdateRegisteredEvents()
 	if not MSBTProfiles.currentProfile.events.NOTIFICATION_PET_COOLDOWN.disabled or MSBTTriggers.categorizedTriggers["PET_COOLDOWN"] then
 		doEnable = true
 	end
-	-- COMBAT_LOG_EVENT_UNFILTERED is only ever registered, never
-	-- unregistered again; petCooldownEventsEnabled gates the actual handler
-	-- instead (see eventFrame:CombatLogEvent() above).
+	-- Retail refuses both RegisterEvent AND UnregisterEvent for
+	-- COMBAT_LOG_EVENT_UNFILTERED once it's tainted, so it's only ever
+	-- registered (via the taint-safe gate, see MikSBT.RegisterCombatLogEvent)
+	-- and never unregistered again; petCooldownEventsEnabled gates the actual
+	-- handler instead (see eventFrame:CombatLogEvent() above).
 	petCooldownEventsEnabled = doEnable
 	if doEnable then
 		MikSBT.RegisterCombatLogEvent(eventFrame)

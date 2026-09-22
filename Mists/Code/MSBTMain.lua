@@ -45,6 +45,8 @@ local triggerSuppressions = MSBTTriggers.triggerSuppressions
 local powerTypes = MSBTTriggers.powerTypes
 local classMap = MSBTParser.classMap
 
+local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+
 
 -------------------------------------------------------------------------------
 -- Constants.
@@ -1612,6 +1614,113 @@ function eventFrame:UNIT_POWER_UPDATE(unitID, powerToken)
 end
 
 
+-------------------------------------------------------------------------------
+-- Damage meter fallback for blocked combat log access.
+-------------------------------------------------------------------------------
+-- MikSBT.combatLogBlocked (see MikSBT.lua) can end up permanently true for a
+-- whole session - Retail's taint rules refuse to register
+-- COMBAT_LOG_EVENT_UNFILTERED at all once execution is tainted, and that can
+-- come from another addon loaded earlier at login, not just from MSBT's own
+-- code. Without combat log access there is no outgoing damage/heal text at
+-- all. C_DamageMeter (patch 12.0+) is Blizzard's own sanctioned replacement
+-- data source, but it only exposes the player's own combat *totals* (no
+-- per-hit detail, no incoming damage), so this polls it periodically and
+-- turns the deltas into synthetic outgoing damage/heal events through the
+-- normal ParserEventsHandler pipeline above - an approximation, not a full
+-- replacement. Ported from the "Midnight" MSBT fork's
+-- Components/DamageMeterSource.lua, which polls the same API the same way.
+--
+-- combatSpells entries (spellID, totalAmount) come back as Blizzard "secret
+-- values" while in combat (patch 12.0's Secret Values system) - arithmetic,
+-- comparisons or string conversion on them error instead of just returning
+-- a wrong result. SafeAddZero below unwraps a value the same way the
+-- Midnight fork's NormalizeNumber() does: try "value + 0" in a pcall, and
+-- treat it as unusable (skip that entry) if that throws.
+-------------------------------------------------------------------------------
+
+local function SafeAddZero(value)
+	local ok, result = pcall(function() return value + 0 end)
+	if ok and type(result) == "number" then
+		return result
+	end
+	return nil
+end
+
+local damageMeterAvailable = IsRetail and C_DamageMeter and Enum and Enum.DamageMeterType and true or false
+local damageMeterLastTotals = {}
+local damageMeterTicker
+
+-- ****************************************************************************
+-- Polls one C_DamageMeter type (damage or healing) for the player and turns
+-- any newly-accumulated amount per spell into a synthetic outgoing event.
+-- ****************************************************************************
+local function PollDamageMeterSource(damageMeterType, eventType)
+	local okGUID, playerGUID = pcall(UnitGUID, "player")
+	if not okGUID or not playerGUID then return end
+
+	local okSource, source = pcall(C_DamageMeter.GetCombatSessionSourceFromType, 0, damageMeterType, playerGUID)
+	if not okSource or not source then return end
+
+	local okSpells, combatSpells = pcall(function() return source.combatSpells end)
+	if not okSpells or type(combatSpells) ~= "table" then return end
+
+	for _, entry in ipairs(combatSpells) do
+		local spellID = SafeAddZero(entry.spellID)
+		local totalAmount = SafeAddZero(entry.totalAmount)
+		if spellID and totalAmount and totalAmount > 0 then
+			local key = damageMeterType .. ":" .. spellID
+			local previousAmount = damageMeterLastTotals[key] or 0
+
+			-- A drop below the last known total means the session reset
+			-- (new pull/segment); treat the fresh total as the delta
+			-- instead of going negative.
+			local delta = totalAmount - previousAmount
+			if delta < 0 then delta = totalAmount end
+			damageMeterLastTotals[key] = totalAmount
+
+			if delta > 0 then
+				ParserEventsHandler({
+					eventType = eventType,
+					sourceUnit = "player",
+					amount = delta,
+					skillID = spellID,
+					skillName = GetSpellInfo(spellID),
+				})
+			end
+		end
+	end
+end
+
+-- ****************************************************************************
+-- Polls both damage and healing done by the player.
+-- ****************************************************************************
+local function PollDamageMeter()
+	PollDamageMeterSource(Enum.DamageMeterType.DamageDone, "damage")
+	PollDamageMeterSource(Enum.DamageMeterType.HealingDone, "heal")
+end
+
+-- ****************************************************************************
+-- Starts polling while in combat, only if combat log access is blocked.
+-- ****************************************************************************
+local function StartDamageMeterFallback()
+	if not damageMeterAvailable or not MikSBT.combatLogBlocked or damageMeterTicker then
+		return
+	end
+	for key in pairs(damageMeterLastTotals) do damageMeterLastTotals[key] = nil end
+	damageMeterTicker = C_Timer.NewTicker(0.5, PollDamageMeter)
+end
+
+-- ****************************************************************************
+-- Stops polling when combat ends.
+-- ****************************************************************************
+local function StopDamageMeterFallback()
+	if damageMeterTicker then
+		damageMeterTicker:Cancel()
+		damageMeterTicker = nil
+	end
+end
+
+
 -- ****************************************************************************
 -- Called when the player leaves combat.
 -- ****************************************************************************
@@ -1621,6 +1730,8 @@ function eventFrame:PLAYER_REGEN_ENABLED()
 	if not eventSettings.disabled then
 		DisplayEvent(eventSettings, eventSettings.message)
 	end
+
+	StopDamageMeterFallback()
 end
 
 
@@ -1633,6 +1744,8 @@ function eventFrame:PLAYER_REGEN_DISABLED()
 	if not eventSettings.disabled then
 		DisplayEvent(eventSettings, eventSettings.message)
 	end
+
+	StartDamageMeterFallback()
 end
 
 

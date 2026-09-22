@@ -1,5 +1,11 @@
 ## Interface: 16001
-## Version: 1.0.0
+#
+# Named "_Mainline", not "_Forever": the Forever client reports
+# WOW_PROJECT_ID as WOW_PROJECT_MAINLINE, so WoW's TOC-flavor selection
+# only looks for "_Mainline" - a "_Forever"-suffixed file is confirmed to
+# not load at all there (silently, no error). Do not rename this file.
+# Still loads the Forever/ code tree (Classic content), not Retail.
+## Version: 1.0.1
 ## Title: Mik's Scrolling Battle Text
 ## Author: Mikord
 ## Notes: Scrolls battle information around the character model.

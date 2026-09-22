@@ -45,6 +45,8 @@ local triggerSuppressions = MSBTTriggers.triggerSuppressions
 local powerTypes = MSBTTriggers.powerTypes
 local classMap = MSBTParser.classMap
 
+local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+
 
 -------------------------------------------------------------------------------
 -- Constants.
@@ -107,7 +109,7 @@ local SPELLID_AUTOSHOT = 75
 -- Spell names.
 local SPELL_BLINK					= GetSkillName(1953)
 --local SPELL_BLIZZARD				= GetSkillName(10)
-local SPELL_BLOOD_STRIKE			= WOW_PROJECT_ID < WOW_PROJECT_CLASSIC and GetSkillName(60945)
+local SPELL_BLOOD_STRIKE			= not MikSBT.Client.isClassicContent and GetSkillName(60945)
 --local SPELL_BLOOD_STRIKE_OFF_HAND	= GetSkillName(66215)
 --local SPELL_HELLFIRE				= GetSkillName(1949)
 --local SPELL_HURRICANE				= GetSkillName(16914)
@@ -133,6 +135,12 @@ local combatEventCache = {}
 
 -- Lookup tables.
 local eventHandlers = {}
+
+-- Set once a real combat log event involving the player has been parsed, so
+-- the Forever-only UNIT_COMBAT / damage meter fallbacks stand down.
+local incomingLogSeen, outgoingLogSeen = false, false
+local lastPlayerSpellID, lastPlayerSpellTime = nil, 0
+local lastMeterDeltaTime = 0
 local damageTypeMap = {}
 local damageColorProfileEntries = {}
 local powerTokens = {}
@@ -481,6 +489,11 @@ local function FormatEvent(message, amount, damageType, overhealAmount, overkill
 				message = string_gsub(message, "%%s", effectName)
 			end
 		end
+	elseif string_find(message, "%s", 1, true) then
+		-- No skill known (e.g. Forever's UNIT_COMBAT fallback): drop the
+		-- token instead of showing it raw.
+		message = string_gsub(message, "%s?%-?%s?%%sl?%s?%-?%s?", "")
+		checkParens = true
 	end
 
 
@@ -1259,6 +1272,12 @@ end
 -- Parser events handler.
 -- ****************************************************************************
 local function ParserEventsHandler(parserEvent)
+	local seenType = parserEvent.eventType
+	if seenType == "damage" or seenType == "heal" then
+		if parserEvent.recipientGUID and parserEvent.recipientUnit == "player" then incomingLogSeen = true end
+		if parserEvent.sourceGUID and parserEvent.sourceUnit == "player" then outgoingLogSeen = true end
+	end
+
 	-- Get a local reference to the current profile.
 	local currentProfile = MSBTProfiles.currentProfile
 
@@ -1612,6 +1631,119 @@ function eventFrame:UNIT_POWER_UPDATE(unitID, powerToken)
 end
 
 
+-------------------------------------------------------------------------------
+-- Damage meter fallback for blocked combat log access.
+-------------------------------------------------------------------------------
+-- MikSBT.combatLogBlocked (see MikSBT.lua) can end up permanently true for a
+-- whole session - Retail's taint rules refuse to register
+-- COMBAT_LOG_EVENT_UNFILTERED at all once execution is tainted, and that can
+-- come from another addon loaded earlier at login, not just from MSBT's own
+-- code. Without combat log access there is no outgoing damage/heal text at
+-- all. C_DamageMeter (patch 12.0+) is Blizzard's own sanctioned replacement
+-- data source, but it only exposes the player's own combat *totals* (no
+-- per-hit detail, no incoming damage), so this polls it periodically and
+-- turns the deltas into synthetic outgoing damage/heal events through the
+-- normal ParserEventsHandler pipeline above - an approximation, not a full
+-- replacement. Ported from the "Midnight" MSBT fork's
+-- Components/DamageMeterSource.lua, which polls the same API the same way.
+--
+-- combatSpells entries (spellID, totalAmount) come back as Blizzard "secret
+-- values" while in combat (patch 12.0's Secret Values system) - arithmetic,
+-- comparisons or string conversion on them error instead of just returning
+-- a wrong result. SafeAddZero below unwraps a value the same way the
+-- Midnight fork's NormalizeNumber() does: try "value + 0" in a pcall, and
+-- treat it as unusable (skip that entry) if that throws.
+-------------------------------------------------------------------------------
+
+local function SafeAddZero(value)
+	local ok, result = pcall(function() return value + 0 end)
+	if ok and type(result) == "number" then
+		return result
+	end
+	return nil
+end
+
+local function damageMeterAvailable()
+	return IsRetail and C_DamageMeter and Enum and Enum.DamageMeterType and true or false
+end
+local damageMeterLastTotals = {}
+local damageMeterTicker
+
+-- ****************************************************************************
+-- Polls one C_DamageMeter type (damage or healing) for the player and turns
+-- any newly-accumulated amount per spell into a synthetic outgoing event.
+-- ****************************************************************************
+local function PollDamageMeterSource(damageMeterType, eventType)
+	local okGUID, playerGUID = pcall(UnitGUID, "player")
+	if not okGUID or not playerGUID then return end
+
+	local okSource, source = pcall(C_DamageMeter.GetCombatSessionSourceFromType, 0, damageMeterType, playerGUID)
+	if not okSource or not source then return end
+
+	local okSpells, combatSpells = pcall(function() return source.combatSpells end)
+	if not okSpells or type(combatSpells) ~= "table" then return end
+
+	for _, entry in ipairs(combatSpells) do
+		local spellID = SafeAddZero(entry.spellID)
+		local totalAmount = SafeAddZero(entry.totalAmount)
+		if spellID and totalAmount and totalAmount > 0 then
+			local key = damageMeterType .. ":" .. spellID
+			local previousAmount = damageMeterLastTotals[key] or 0
+
+			-- A drop below the last known total means the session reset
+			-- (new pull/segment); treat the fresh total as the delta
+			-- instead of going negative.
+			local delta = totalAmount - previousAmount
+			if delta < 0 then delta = totalAmount end
+			damageMeterLastTotals[key] = totalAmount
+
+			if delta > 0 then
+				lastMeterDeltaTime = GetTime()
+				ParserEventsHandler({
+					eventType = eventType,
+					sourceUnit = "player",
+					amount = delta,
+					skillID = spellID,
+					skillName = GetSpellInfo(spellID),
+				})
+			end
+		end
+	end
+end
+
+-- ****************************************************************************
+-- Polls both damage and healing done by the player.
+-- ****************************************************************************
+local function PollDamageMeter()
+	if outgoingLogSeen then return end
+	PollDamageMeterSource(Enum.DamageMeterType.DamageDone, "damage")
+	PollDamageMeterSource(Enum.DamageMeterType.HealingDone, "heal")
+end
+
+-- ****************************************************************************
+-- Starts polling while in combat, if combat log access is blocked or on the
+-- Forever client (whose combat log delivers no usable outgoing events at
+-- all, gate or no gate). Stands down once PollDamageMeter sees a real one.
+-- ****************************************************************************
+local function StartDamageMeterFallback()
+	if not damageMeterAvailable() or not (MikSBT.combatLogBlocked or MikSBT.Client.isForever) or damageMeterTicker then
+		return
+	end
+	for key in pairs(damageMeterLastTotals) do damageMeterLastTotals[key] = nil end
+	damageMeterTicker = C_Timer.NewTicker(0.5, PollDamageMeter)
+end
+
+-- ****************************************************************************
+-- Stops polling when combat ends.
+-- ****************************************************************************
+local function StopDamageMeterFallback()
+	if damageMeterTicker then
+		damageMeterTicker:Cancel()
+		damageMeterTicker = nil
+	end
+end
+
+
 -- ****************************************************************************
 -- Called when the player leaves combat.
 -- ****************************************************************************
@@ -1621,6 +1753,8 @@ function eventFrame:PLAYER_REGEN_ENABLED()
 	if not eventSettings.disabled then
 		DisplayEvent(eventSettings, eventSettings.message)
 	end
+
+	StopDamageMeterFallback()
 end
 
 
@@ -1632,6 +1766,67 @@ function eventFrame:PLAYER_REGEN_DISABLED()
 	local eventSettings = MSBTProfiles.currentProfile.events.NOTIFICATION_COMBAT_ENTER
 	if not eventSettings.disabled then
 		DisplayEvent(eventSettings, eventSettings.message)
+	end
+
+	StartDamageMeterFallback()
+end
+
+
+-- ****************************************************************************
+-- Forever fallback: the combat log delivers nothing usable there, so
+-- damage/heals are derived from UNIT_COMBAT instead, attributed to
+-- whichever spell the player last cast. Stands down per-direction once a
+-- real combat log event for the player has been parsed (see incomingLogSeen/
+-- outgoingLogSeen above), so nothing is ever shown twice.
+-- ****************************************************************************
+local function RecordPlayerSpell(unitID, spellID)
+	if unitID ~= "player" then return end
+	local ok, id = pcall(function() return spellID + 0 end)
+	if ok and type(id) == "number" then
+		lastPlayerSpellID, lastPlayerSpellTime = id, GetTime()
+	end
+end
+
+-- The heal/damage from a cast lands with (or before) UNIT_SPELLCAST_SUCCEEDED,
+-- so casts are also recorded when they start and are sent.
+function eventFrame:UNIT_SPELLCAST_SUCCEEDED(unitID, _, spellID) RecordPlayerSpell(unitID, spellID) end
+function eventFrame:UNIT_SPELLCAST_START(unitID, _, spellID) RecordPlayerSpell(unitID, spellID) end
+function eventFrame:UNIT_SPELLCAST_SENT(unitID, _, _, spellID) RecordPlayerSpell(unitID, spellID) end
+
+function eventFrame:UNIT_COMBAT(unitTarget, action, flagText, amount)
+	local ok, value = pcall(function() return amount + 0 end)
+	if not ok or type(value) ~= "number" or value <= 0 then return end
+
+	-- Outgoing damage: UNIT_COMBAT on the target, attributed to the last
+	-- spell the player cast. Skipped while the damage meter is delivering.
+	if unitTarget == "target" and action == "WOUND" then
+		if outgoingLogSeen or not InCombatLockdown() then return end
+		if GetTime() - lastMeterDeltaTime < 1 then return end
+		local skillID, skillName
+		if lastPlayerSpellID and GetTime() - lastPlayerSpellTime <= 4 then
+			skillID = lastPlayerSpellID
+			skillName = GetSpellInfo(skillID)
+		end
+		ParserEventsHandler({eventType = "damage", sourceUnit = "player", recipientName = UnitName("target"), amount = value,
+			isCrit = (flagText == "CRITICAL"), skillID = skillID, skillName = skillName})
+		return
+	end
+
+	if unitTarget ~= "player" or incomingLogSeen then return end
+	if action == "WOUND" then
+		ParserEventsHandler({eventType = "damage", recipientUnit = "player", amount = value, isCrit = (flagText == "CRITICAL")})
+	elseif action == "HEAL" then
+		-- Attribute to the player's own last cast (a self heal) when there is
+		-- one; UNIT_COMBAT doesn't say who healed.
+		local playerName = UnitName("player")
+		local skillID, skillName, sourceName
+		if lastPlayerSpellID and GetTime() - lastPlayerSpellTime <= 4 then
+			skillID = lastPlayerSpellID
+			skillName = GetSpellInfo(skillID)
+			sourceName = playerName
+		end
+		ParserEventsHandler({eventType = "heal", recipientUnit = "player", sourceName = sourceName, recipientName = playerName,
+			amount = value, isCrit = (flagText == "CRITICAL"), skillID = skillID, skillName = skillName})
 	end
 end
 
@@ -1657,6 +1852,12 @@ local function Enable()
 	eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 	eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
 	eventFrame:RegisterEvent("CHAT_MSG_MONSTER_EMOTE")
+	if MikSBT.Client.isForever then
+		eventFrame:RegisterEvent("UNIT_COMBAT")
+		eventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+		eventFrame:RegisterEvent("UNIT_SPELLCAST_START")
+		eventFrame:RegisterEvent("UNIT_SPELLCAST_SENT")
+	end
 
 	-- Register the parser events handler.
 	MSBTParser.RegisterHandler(ParserEventsHandler)

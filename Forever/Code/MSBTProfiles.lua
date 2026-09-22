@@ -26,7 +26,7 @@ local GetSkillName = MikSBT.GetSkillName
 local Print = MikSBT.Print
 local SplitString = MikSBT.SplitString
 
-local IsClassic = WOW_PROJECT_ID >= WOW_PROJECT_CLASSIC
+local IsClassic = MikSBT.Client.isClassicContent
 local IsCataClassic = WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC
 
 
@@ -3839,13 +3839,9 @@ local function OnEvent(this, event, arg1)
 		InitSavedVariables()
 
 		-- Resolve the Settings tab's language override now that
-		-- MSBTProfiles_SavedVars is finally readable (it's nil during every
-		-- file's own load-time execution, including every
-		-- Localization/localization.*.lua, which only run before
-		-- ADDON_LOADED). Reset to the English pack first, since a
-		-- non-English pack only overwrites the keys it translates and
-		-- would otherwise leave stale text from whatever GetLocale() auto-
-		-- applied at file-load time.
+		-- MSBTProfiles_SavedVars is finally readable (it's nil during
+		-- every file's own load-time execution). Reset to English first,
+		-- since a non-English pack only overwrites the keys it translates.
 		if (MikSBT.localePacksCore) then
 			if (MikSBT.localePacksCore["enUS"]) then MikSBT.localePacksCore["enUS"]() end
 			local override = MSBTProfiles_SavedVars and MSBTProfiles_SavedVars.uiLanguage
