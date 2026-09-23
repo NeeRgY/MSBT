@@ -25,7 +25,7 @@ A maintained Version of **Mik's Scrolling Battle Text (MSBT)**, originally by **
 
 Rebuilds the options window on a flat theme, with a dedicated TOC and code tree per game version.
 
-**Current version:** `v1.0.1`
+**Current version:** `v1.0.3`
 
 </div>
 
