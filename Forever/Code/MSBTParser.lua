@@ -22,7 +22,14 @@ local bit_band = bit.band
 local bit_bor = bit.bor
 local GetTime = GetTime
 local UnitClass = UnitClass
-local UnitGUID = UnitGUID
+local function UnitGUID(unit)
+	-- This client can return a secret GUID for target/mouseover units while
+	-- in combat; secret values can't be used as table keys, so treat them as
+	-- unknown instead of erroring.
+	local guid = _G.UnitGUID(unit)
+	if guid ~= nil and issecretvalue and issecretvalue(guid) then return nil end
+	return guid
+end
 local UnitName = UnitName
 
 local EraseTable = MikSBT.EraseTable

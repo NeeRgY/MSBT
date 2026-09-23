@@ -1779,6 +1779,13 @@ end
 -- real combat log event for the player has been parsed (see incomingLogSeen/
 -- outgoingLogSeen above), so nothing is ever shown twice.
 -- ****************************************************************************
+-- Secret strings (e.g. UnitName("target") in combat) can't be compared or
+-- merged on, so drop them from the synthetic events below.
+local function NonSecret(value)
+	if value ~= nil and issecretvalue and issecretvalue(value) then return nil end
+	return value
+end
+
 local function RecordPlayerSpell(unitID, spellID)
 	if unitID ~= "player" then return end
 	local ok, id = pcall(function() return spellID + 0 end)
@@ -1807,7 +1814,7 @@ function eventFrame:UNIT_COMBAT(unitTarget, action, flagText, amount)
 			skillID = lastPlayerSpellID
 			skillName = GetSpellInfo(skillID)
 		end
-		ParserEventsHandler({eventType = "damage", sourceUnit = "player", recipientName = UnitName("target"), amount = value,
+		ParserEventsHandler({eventType = "damage", sourceUnit = "player", recipientName = NonSecret(UnitName("target")), amount = value,
 			isCrit = (flagText == "CRITICAL"), skillID = skillID, skillName = skillName})
 		return
 	end
@@ -1818,7 +1825,7 @@ function eventFrame:UNIT_COMBAT(unitTarget, action, flagText, amount)
 	elseif action == "HEAL" then
 		-- Attribute to the player's own last cast (a self heal) when there is
 		-- one; UNIT_COMBAT doesn't say who healed.
-		local playerName = UnitName("player")
+		local playerName = NonSecret(UnitName("player"))
 		local skillID, skillName, sourceName
 		if lastPlayerSpellID and GetTime() - lastPlayerSpellTime <= 4 then
 			skillID = lastPlayerSpellID

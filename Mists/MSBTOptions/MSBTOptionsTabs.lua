@@ -371,6 +371,9 @@ local function MediaTab_ValidateCustomSoundPath(soundPath)
 	if (not soundPath or soundPath == "") then return L.MSG_INVALID_SOUND_FILE end
 	-- Ensure that the custom file path is either a number (FileDataID)
 	if (type(soundPath) ~= "string") then return end
+	-- A bare filename is resolved against the addon's Sounds folder when saved
+	-- (see MediaTab_AddCustomSound), so validate it the same way.
+	if (not string.find(soundPath, "\\", 1, true) and not string.find(soundPath, "/", 1, true)) then soundPath = DEFAULT_SOUND_PATH .. soundPath end
 	local soundPathLower = string.lower(soundPath)
 	-- Or a string that begins with "Interface" and ends with either ".mp3" or ".ogg"
 	if (((string.find(soundPathLower, "interface") or 0) ~= 1 or (not string.find(soundPathLower, ".mp3") and not string.find(soundPathLower, ".ogg")))) then
