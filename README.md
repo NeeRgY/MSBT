@@ -66,11 +66,9 @@ Without their work, this fork would not exist.
 | Classic Era (`1.15.9`) | `11509` | `MikScrollingBattleText_Vanilla.toc` |
 | TBC Classic (`2.5.6`) | `20506` | `MikScrollingBattleText_TBC.toc` |
 | MoP Classic (`5.5.4`) | `50504` | `MikScrollingBattleText_Mists.toc` |
-| Classic "Forever" (`1.60.1`) | `16001` | `MikScrollingBattleText_Mainline.toc`\* |
+| Classic "Forever" (`1.60.1`) | `16001` | `MikScrollingBattleText_Forever.toc` |
 
 `Libs/`, `Fonts/`, `Sounds/`, `Artwork/` and the core `Localization/` folder are shared by all four TOCs. SavedVariables stay `MSBTProfiles_SavedVars` / `MSBT_SavedMedia`, so existing MSBT settings carry over.
-
-\* The "Forever" client reports `WOW_PROJECT_ID` as `WOW_PROJECT_MAINLINE`, so WoW's automatic flavor detection only ever looks for a `_Mainline`-suffixed (or unsuffixed) TOC - a `_Forever` suffix is never considered, no matter its `## Interface` value. The file is still named `_Mainline` for that reason alone; it loads the `Forever/` code tree (Classic-style API and content), not Retail.
 
 ---
 
