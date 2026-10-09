@@ -3514,17 +3514,10 @@ end
 -- Updates profiles created with older versions.
 -- ****************************************************************************
 local function UpdateProfiles()
-	-- Loop through all the profiles.
-	for profileName, profile in pairs(savedVariables.profiles) do
-		-- Get numeric creation version.
-		local creationVersion = tonumber(select(3, string_find(tostring(profile.creationVersion), "(%d+%.%d+)")))
-
-		-- Delete triggers if upgrading from a version prior to 5.2.
-		if (creationVersion < 5.2) then
-			profile.triggers = nil
-			profile.creationVersion = MikSBT.VERSION .. "." .. MikSBT.SVN_REVISION
-		end
-	end
+	-- Intentionally empty. This used to wipe profile.triggers for profiles with a
+	-- creationVersion below 5.2, but this fork's TOC version is 1.x, so every
+	-- profile matched and lost its trigger changes (deleted/custom triggers) on
+	-- every load.
 end
 
 

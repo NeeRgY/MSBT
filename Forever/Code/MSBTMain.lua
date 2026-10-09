@@ -141,6 +141,7 @@ local eventHandlers = {}
 local incomingLogSeen, outgoingLogSeen = false, false
 local lastPlayerSpellID, lastPlayerSpellTime = nil, 0
 local lastMeterDeltaTime = 0
+local meterDeliveredThisCombat = false
 local damageTypeMap = {}
 local damageColorProfileEntries = {}
 local powerTokens = {}
@@ -575,6 +576,14 @@ local function DetectPowerGain(powerAmount, powerType)
 	if powerAmount > lastPowerAmount then
 		DisplayEvent(eventSettings, FormatEvent(eventSettings.message, powerAmount - lastPowerAmount, nil, nil, nil, powerType, nil, nil, UNKNOWN))
 	end
+end
+
+-- UnitPower()/UnitPowerMax() can return secret numbers in combat on the
+-- Forever client, which can't be compared; treat those as unknown.
+local function UnitPowerMax(unit, powerType)
+	local value = _G.UnitPowerMax(unit, powerType)
+	if value ~= nil and issecretvalue and issecretvalue(value) then return nil end
+	return value
 end
 
 -- ****************************************************************************
@@ -1576,6 +1585,7 @@ function eventFrame:UNIT_POWER_UPDATE(unitID, powerToken)
 
 	-- Get the current power amount for the power type that changed.
 	local powerAmount = UnitPower("player", powerType)
+	if issecretvalue and issecretvalue(powerAmount) then return end
 
 	local doFullDetect = true
 	local lastPowerAmount = lastPowerAmounts[powerType]
@@ -1699,6 +1709,7 @@ local function PollDamageMeterSource(damageMeterType, eventType)
 
 			if delta > 0 then
 				lastMeterDeltaTime = GetTime()
+				meterDeliveredThisCombat = true
 				ParserEventsHandler({
 					eventType = eventType,
 					sourceUnit = "player",
@@ -1730,6 +1741,7 @@ local function StartDamageMeterFallback()
 		return
 	end
 	for key in pairs(damageMeterLastTotals) do damageMeterLastTotals[key] = nil end
+	meterDeliveredThisCombat = false
 	damageMeterTicker = C_Timer.NewTicker(0.5, PollDamageMeter)
 end
 
@@ -1808,6 +1820,9 @@ function eventFrame:UNIT_COMBAT(unitTarget, action, flagText, amount)
 	-- spell the player cast. Skipped while the damage meter is delivering.
 	if unitTarget == "target" and action == "WOUND" then
 		if outgoingLogSeen or not InCombatLockdown() then return end
+		-- In a group, UNIT_COMBAT also reports party members' damage on the target;
+		-- once the damage meter (player-only) is delivering, rely on it instead.
+		if meterDeliveredThisCombat and IsInGroup() then return end
 		if GetTime() - lastMeterDeltaTime < 1 then return end
 		local skillID, skillName
 		if lastPlayerSpellID and GetTime() - lastPlayerSpellTime <= 4 then
@@ -1842,8 +1857,13 @@ end
 -- Called when a unit's combo points change.
 -- ****************************************************************************
 function eventFrame:CHAT_MSG_MONSTER_EMOTE(message, sourceName)
+	-- Secret strings can't be compared or merged into the message.
+	if NonSecret(message) == nil or NonSecret(sourceName) == nil then return end
+	local targetName = NonSecret(UnitName("target"))
+	if targetName == nil then return end
+
 	-- Ignore the event if it's not the current target.
-	if sourceName ~= UnitName("target") then
+	if sourceName ~= targetName then
 		return
 	end
 	HandleMonsterEmotes(string_gsub(message, "%%s", sourceName))

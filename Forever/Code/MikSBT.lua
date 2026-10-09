@@ -250,7 +250,11 @@ end--]]
 -- (Gate mechanics ported from Parrot3's Code/Parrot.lua.)
 local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 
-local combatLogGateReady = not IsRetail
+-- Also gate on Forever explicitly (interface check, plus the CAMELOT project ID
+-- in case a build reports that instead of MAINLINE).
+local NeedsCombatLogGate = IsRetail or isForever or (WOW_PROJECT_CAMELOT ~= nil and WOW_PROJECT_ID == WOW_PROJECT_CAMELOT)
+
+local combatLogGateReady = not NeedsCombatLogGate
 local combatLogCallbacks = {}
 
 local function ResolveCombatLogGate()
@@ -269,7 +273,7 @@ local function ResolveCombatLogGate()
 	combatLogCallbacks = nil
 end
 
-if IsRetail then
+if NeedsCombatLogGate then
 	local combatLogGateFrame = CreateFrame("Frame")
 	combatLogGateFrame:SetScript("OnEvent", function(_, event)
 		combatLogGateFrame:UnregisterEvent(event)

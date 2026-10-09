@@ -703,20 +703,31 @@ end
 -- ****************************************************************************
 -- Populate the controls with the profile settings.
 -- ****************************************************************************
+-- The Forever client renamed these CVars to "<name>_v2"; the old names no
+-- longer exist there, so prefer the _v2 name whenever the client has it.
+local function RealCVar(name)
+	if GetCVarDefault(name .. "_v2") ~= nil then return name .. "_v2" end
+	return name
+end
+
+local function SetBlizzardDamageCVars(on)
+	local value = on and 1 or 0
+	SetCVar(RealCVar("floatingCombatTextCombatDamage"), value)
+	if MikSBT.Client.isForever then
+		for _, name in ipairs({"floatingCombatTextCombatHealing", "floatingCombatTextCombatLogPeriodicSpells", "floatingCombatTextPetMeleeDamage", "floatingCombatTextPetSpellDamage"}) do
+			if GetCVarDefault(name .. "_v2") ~= nil then SetCVar(name .. "_v2", value) end
+		end
+	end
+end
+
 local function GeneralTab_Populate()
 	local currentProfile = MSBTProfiles.currentProfile
 	local controls = tabFrames.general.controls
 
 	controls.enableCheckbox:SetChecked(not MSBTProfiles.IsModDisabled())
-	if GetCVar("floatingCombatTextCombatDamage") == "0" then
-		controls.enableBlizzardDamage:SetChecked(false)
-		currentProfile.enableBlizzardDamage = false
-	else
-		controls.enableBlizzardDamage:SetChecked(true)
-		currentProfile.enableBlizzardDamage = true
-	end
+	controls.enableBlizzardDamage:SetChecked(currentProfile.keepBlizzardDamage and true or false)
 	if not IsClassic then
-		if GetCVar("floatingCombatTextCombatHealing") == "0" then
+		if GetCVar(RealCVar("floatingCombatTextCombatHealing")) == "0" then
 			controls.enableBlizzardHealing:SetChecked(false)
 			currentProfile.enableBlizzardHealing = false
 		else
@@ -881,11 +892,11 @@ local function GeneralTab_Create()
 			if InCombatLockdown() then
 				return
 			end
-			MSBTProfiles.SetOption(nil, "enableBlizzardDamage", not isChecked)
+			MSBTProfiles.SetOption(nil, "keepBlizzardDamage", isChecked)
 			if isChecked then
-				SetCVar("floatingCombatTextCombatDamage", 1)
+				SetBlizzardDamageCVars(true)
 			else
-				SetCVar("floatingCombatTextCombatDamage", 0)
+				SetBlizzardDamageCVars(false)
 			end
 		end
 	)
@@ -906,9 +917,9 @@ local function GeneralTab_Create()
 				end
 				MSBTProfiles.SetOption(nil, "enableBlizzardHealing", not isChecked)
 				if isChecked then
-					SetCVar("floatingCombatTextCombatHealing", 1)
+					SetCVar(RealCVar("floatingCombatTextCombatHealing"), 1)
 				else
-					SetCVar("floatingCombatTextCombatHealing", 0)
+					SetCVar(RealCVar("floatingCombatTextCombatHealing"), 0)
 				end
 			end
 		)
